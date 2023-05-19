@@ -1,0 +1,25 @@
+### Environment specific non secure  properties go here ###
+
+
+### API ID ### Create API Configuration in API Manager for DEV Env and update the id. 
+api:
+  id: "18649998"
+  
+
+https:
+  listener:
+    host: "0.0.0.0"
+  private:   
+    port: "8092"
+    
+http:
+  fico:
+    host: "dev-bnb-it-fico-sapi-v1.us-e2.cloudhub.io"
+    port: ""
+    baseUri: "/api/v2"
+    ordersPath: "/orders"
+    ordersByIdPath: "/orders/{id}"
+    searchBusinessPath: "/search-business"
+    clientId: "${secure::mulesoft.client_id}"
+    client_secret: "${secure::mulesoft.client_secret}"
+  

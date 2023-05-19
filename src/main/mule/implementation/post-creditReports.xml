@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="post-creditReportsFlow" doc:id="734785e5-a1cb-41a2-8863-6940dcb89418" >
+		<logger level="INFO" doc:name="Logger" doc:id="bf95a82a-0c32-4a64-94ef-b66faf286b0c" message='#["Started Credit Reports Process"]'/>
+		<ee:transform doc:name="vars: params, originalPayload" doc:id="00a59ff5-d746-4c92-bba6-453de074213d" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="params" ><![CDATA[%dw 2.0
+output application/java
+fun checkIfExist(data) = (not (isEmpty(data)) default false)
+---
+{
+	doesPayloadHasBusiness: checkIfExist(payload.business),
+	principalSize: sizeOf(payload.principals),
+	orderIds: [],
+	reportFormat: payload.reportFormat,
+    reportType: if(checkIfExist(payload.business)) "Experian" else "TransUnion"
+}]]></ee:set-variable>
+				<ee:set-variable variableName="originalPayload" ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="30647a41-e5df-4539-98f9-dd60a17b331e" >
+			<when expression="#[vars.params.doesPayloadHasBusiness]">
+				<logger level="INFO" doc:name="Processing with Business" doc:id="011e178b-942b-4606-8d70-39c4a41f8ecf" message='#["Performing Credit Report with Business"]'/>
+				<flow-ref doc:name="search-business-lookup-flow" doc:id="915b6a75-9127-4548-b7f9-6a46d6ac1a1c" name="search-business-lookup-flow"/>
+				<flow-ref doc:name="check-business-confidence-scores" doc:id="8980d398-e426-470c-b106-5516da55609d" name="check-business-confidence-scores" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Processing TransUnion" doc:id="67501c7f-5d13-474e-9a87-e7e4fcefeee8" message='#["Performing TransUnion Credit Report"]'/>
+			</otherwise>
+		</choice>
+		<flow-ref doc:name="create-fico-order-by-principalsFlow" doc:id="f8fa96f3-50d3-4b11-b184-29fa32d0dadb" name="create-fico-order-by-principalsFlow" />
+		<parallel-foreach doc:name="Parallel For Each orderId" doc:id="29bc8c32-a037-4950-b899-41a9b11aad03" collection="#[vars.params.orderIds]" target="orderReports">
+			<flow-ref doc:name="get-creditReportByIdFlow" doc:id="8b788d54-547e-4778-8cb5-6a956e83fc7a" name="get-creditReportByIdFlow" />
+		</parallel-foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="fcb4bd6f-99eb-4032-9772-cda5f2d1ab43" message='#["Completed credit reports process"]'/>
+	</flow>
+	<flow name="search-business-lookup-flow" doc:id="fdbb4d79-0dfe-4c6a-ad47-a9e701920fb4">
+		<logger level="INFO" doc:name="Logger" doc:id="1a375d03-3a1c-46f2-9bce-da48b635620a" message='#["Searching business"]' />
+		<ee:transform doc:name="payload to search business" doc:id="fd58b7aa-cc49-4815-a26a-8db798d813c1">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "reportType": vars.params.reportType,
+  "noOfPrincipals": vars.params.principalSize,
+  "business": vars.originalPayload.business
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+		<http:request method="POST" doc:name="POST /search-business" doc:id="566223ff-1d05-421b-bbe5-0b6d56204583" config-ref="HTTP_FICO_Request_configuration" path="${http.fico.searchBusinessPath}">
+		</http:request>
+		<ee:transform doc:name="company with highest score" doc:id="754b2c31-5b46-4162-86ea-1f33d0ecd894">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{"searchId" : payload.searchId} ++ ((payload.companies orderBy -$.confidenceScore)[0])]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="747ee29f-b994-491f-853f-fd7acd61c631" message='#["Search business completed"]' />
+	</flow>
+	<flow name="check-business-confidence-scores" doc:id="846dfc31-a636-4652-b920-e2ecd11c13ab">
+		<logger level="INFO" doc:name="Logger" doc:id="d1be949e-5a9b-443e-8cf2-1cade7ef572e" message='#["Checking Confidence Scores"]'/>
+		<choice doc:name="Check Confidence Scores" doc:id="0c0efcf4-2a03-4bbb-a264-c153476e49fe">
+					<when expression="#[payload.confidenceScore &gt; 90.75]">
+						<logger level="INFO" doc:name="Processing Experian Credit Report" doc:id="7bd659c6-3057-4955-a957-7aeaa95516c3" message='#["Processing Experian Credit Report"]' />
+					</when>
+					<otherwise>
+						<logger level="INFO" doc:name="Processing D&amp;B Credit Report" doc:id="3f7d2953-bea7-48f4-b1cb-dc468675c44d" message='#["Processing D&amp;B Credit Report"]' />
+						<ee:transform doc:name="vars: params - Update reportType to D&amp;B" doc:id="001b54bc-f68d-49de-882f-aef1b8083128">
+							<ee:message>
+							</ee:message>
+							<ee:variables>
+								<ee:set-variable variableName="params"><![CDATA[%dw 2.0
+output application/java
+---
+vars.params update {
+	case .reportType -> "D&B"
+}]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+						<flow-ref doc:name="search-business-lookup-flow" doc:id="b741b89e-17b8-40c7-ae0b-9e95dfb0ce20" name="search-business-lookup-flow" />
+					</otherwise>
+				</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="62cc8a8e-17c7-419a-b917-2dc60f7c4370" message='#["Completed business confidence scores check"]'/>
+	</flow>
+	<sub-flow name="create-fico-order-by-principalsFlow" doc:id="b943ab26-839d-403f-bcaf-48b82f122a31">
+		<foreach doc:name="For Each principal" doc:id="700ae755-1680-465f-a0d0-f372889aade5" collection="#[payload.principals]" batchSize="2">
+					<flow-ref doc:name="create-fico-orderFlow" doc:id="1bd1c18d-79bf-445d-bc08-1d1238273d5b" name="create-fico-orderFlow" />
+					<ee:transform doc:name="vars: orderIds" doc:id="5647b7c2-f4fb-4b38-b96d-415360dfb9d8">
+						<ee:message>
+						</ee:message>
+						<ee:variables>
+							<ee:set-variable variableName="params"><![CDATA[%dw 2.0
+output application/json
+---
+vars.params update {
+	case .orderIds -> (($ default []) + payload.id)
+}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+				</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="d2cd551c-9652-45d2-a826-eba54f3f8ea1" message='#["Created " ++ (vars.params.reportType default "") ++ " Credit Report"]'/>
+	</sub-flow>
+	<flow name="create-fico-orderFlow" doc:id="9629a528-25f6-4a52-9840-3bcb217d2983" >
+		<logger level="INFO" doc:name="Logger" doc:id="bd1d82b4-e333-4658-b99b-275c3653af88" message='#["Request Consumer Report"]'/>
+		<ee:transform doc:name="to FICO Order Payload" doc:id="8fda15f5-153b-4f82-8793-49ea057d3165">
+			<ee:message>
+				<ee:set-payload resource="dwl/create-fico-request.dwl" />
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="Create FICO Order" doc:id="b8309576-cecf-4aec-858b-ac65ec83e70a" config-ref="HTTP_FICO_Request_configuration" path="${http.fico.ordersPath}"/>
+		<logger level="INFO" doc:name="Logger" doc:id="8e7d04b0-9b75-447a-b182-79ef5e249060" message='#["Recieved Consumer Report"]'/>
+	</flow>
+	<flow name="get-creditReportByIdFlow" doc:id="ba57d0a3-771a-4d79-9cfc-3814d1710c58" >
+		<logger level="INFO" doc:name="Getting Credit Report By Order" doc:id="7833e830-16cf-4332-af32-8a9365133318" message='#["Getting Credit Report " ++ ((payload default 0) as String)]'/>
+		<http:request method="GET" doc:name="Order By ID" doc:id="6a0437f1-e5ca-448d-b712-8b19c07dad44" config-ref="HTTP_FICO_Request_configuration" path="${http.fico.ordersByIdPath}">
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"id" : payload
+}]]]></http:uri-params>
+		</http:request>
+		<logger level="INFO" doc:name="Completed Credit Report By Order ID" doc:id="04ef9f16-8a93-4113-90f0-c9c23429e6ee" message='#["Completed Credit Report By Order ID"]'/>
+	</flow>
+</mule>

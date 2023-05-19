@@ -1,0 +1,8 @@
+%dw 2.0
+
+type auto_b943ab26_839d_403f_bcaf_48b82f122a31_Input_Variables_params = {|
+  doesPayloadHasBusiness: Boolean, 
+  principalSize: Any, 
+  orderIds: Array<Nothing>
+|}
+

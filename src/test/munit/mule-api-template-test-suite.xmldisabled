@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+	<munit:config name="template-example-api-impl-test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration_Tester" doc:name="HTTP Request configuration" doc:id="0e78b2ab-027b-453f-996b-9defd758bfe7" basePath="/api/v1" responseTimeout="240000">
+		<http:request-connection host="localhost" port="${https.port}" protocol="HTTPS">
+			<tls:context >
+				<tls:trust-store insecure="true" />
+			</tls:context>
+		</http:request-connection>
+	</http:request-config>
+	<munit:test name="get:\template:api-implTest-Success" description="Test" doc:id="83430d56-c4a9-4f34-9212-a805fbe01eb1">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="bnb-it-parties-papi-main" />
+			<munit:enable-flow-source value="get:\template:bnb-it-parties-papi-config" />	        
+    		</munit:enable-flow-sources>
+		<munit:execution >
+			<http:request method="GET" doc:name="Invoke API" doc:id="f9a1c4bf-887b-4016-acd0-d455f2d482b3" config-ref="HTTP_Request_configuration_Tester" path="/template">
+				<http:headers ><![CDATA[#[output application/java
+---
+{
+	"client_secret" : "xxxxx",
+	"client_id" : "xxxxx"
+}]]]></http:headers>
+				<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"param1" : 123
+}]]]></http:query-params>
+			</http:request>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Check Final Payload" doc:id="89699e96-da34-41d1-94d9-87aef95bfb1e" expression="#[payload.key1]" is="#[MunitTools::equalTo('value1')]" message="Value Matches"/>
+			<munit-tools:assert-that doc:name="HTTP Status is 200" doc:id="8737c21a-935b-4e97-ae27-36fe96f39f85" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="get:\template:api-implTest-validationError" description="Test" doc:id="8401da8f-33f9-4ff1-96f3-33f4b9bbcb07" ignore="true">
+		<munit:enable-flow-sources>
+			<munit:enable-flow-source value="bnb-it-parties-papi-main" />
+			<munit:enable-flow-source value="get:\template:bnb-it-parties-papi-config" />	        
+    		</munit:enable-flow-sources>
+		<munit:execution >
+			<try doc:name="Try" doc:id="ce788608-3dc4-4138-bd9a-7e95d07e1c43" >
+				<http:request method="GET" doc:name="Invoke API" doc:id="cd7e57dc-0643-487f-a2b3-048fb8db5991" config-ref="HTTP_Request_configuration_Tester" path="/template">
+				<http:headers><![CDATA[#[output application/java
+---
+{
+	"client_secret" : "xxxxx",
+	"client_id" : "xxxxx"
+}]]]></http:headers>
+				<http:query-params><![CDATA[#[output application/java
+---
+{
+	"param1" : '123a'
+}]]]></http:query-params>
+			</http:request>
+				<error-handler >
+					<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="295635b7-6e25-4e10-9972-670f24fe0558" type="HTTP:BAD_REQUEST">
+						<ee:transform doc:name="Transform Message" doc:id="7018a0db-a8d2-4ed3-bfd3-be1973139fd9" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+error.errorMessage.payload default {}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="3b615350-2618-483d-8c4e-c02abb9566ec" message="#[%dw 2.0
+output application/json
+---
+payload]"/>
+					</on-error-continue>
+				</error-handler>
+			</try>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Error Code is 400" doc:id="b5021d23-4fab-446c-8f45-1f5e9581baa8" expression="#[payload.errorDetails.code[0]]" is="#[MunitTools::equalTo(400)]"/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="get:\template:api-implTest-choiceDefaultPath" doc:id="ec55af9b-8158-4615-9ce9-1852d5803eb7" >
+		<munit:enable-flow-sources >
+			<munit:enable-flow-source value="get:\template:bnb-it-parties-papi-config" />
+			<munit:enable-flow-source value="bnb-it-parties-papi-main" />
+		</munit:enable-flow-sources>
+		<munit:execution >
+			<http:request method="GET" doc:name="Invoke API" doc:id="ca6c80bd-b430-44d5-aa7c-2f1697936d1d" config-ref="HTTP_Request_configuration_Tester" path="/template" >
+				<http:headers ><![CDATA[#[output application/java
+---
+{
+	"client_secret" : "xxxxx",
+	"client_id" : "xxxxx"
+}]]]></http:headers>
+			</http:request>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Check Final Payload" doc:id="ba5124c4-f397-4dd2-8467-bb007e675fd9" message="Value Matches" expression="#[payload.key1]" is="#[MunitTools::equalTo('value1')]" />
+			<munit-tools:assert-that doc:name="HTTP Status is 200" doc:id="81a8f7ab-340d-4eb7-b14c-ea1af3fb0dcc" expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="get:\:api-impl-test-payload-check" doc:id="5ec922db-f7fd-4c5f-9fca-8161b7f97bf6" >
+		<munit:behavior >
+			<munit:set-event doc:name="Set Input" doc:id="870da296-423c-40a2-8ef5-388cd84503f8" >
+				<munit:payload value="#[readUrl('classpath://getapiimpltest/set-event_payload.dwl')]" encoding="UTF-8" />
+				<munit:attributes value="#[readUrl('classpath://getapiimpltest/set-event_attributes.dwl')]" />
+				<munit:variables >
+					<munit:variable key="outboundHeaders" value="#[readUrl('classpath://getapiimpltest/set-event_variable_.dwl')]" />
+					<munit:variable key="x-root-correlation-id" value="#[output application/java --- readUrl('classpath://getapiimpltest/set-event_variable_1.dwl')]" encoding="UTF-8" mediaType="application/java" />
+				</munit:variables>
+			</munit:set-event>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to get:\:bnb-it-parties-papi-config" doc:id="d021419f-efad-476d-8d44-b4fdf4c4f282" name="get:\:bnb-it-parties-papi-config"/>
+		</munit:execution>
+		<munit:validation >
+			<ee:transform doc:name="Delete Time Field" doc:id="ac76a722-ad31-47f2-a55b-42b31569d4ab" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"status": payload.status,
+  	"environment": payload.environment
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<munit-tools:assert doc:name="Assert payload" doc:id="7a74df81-1b0b-45c2-965e-599981ae2005" message="The payload does not match">
+				<munit-tools:that ><![CDATA[#[%dw 2.0
+import getapiimpltest::assert_expression_payload
+---
+assert_expression_payload::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+			</munit-tools:assert>
+			<munit-tools:verify-call doc:name="Verify call util:healthcheck" doc:id="60819d91-8210-482b-8e5d-b082fd8621a1" processor="flow-ref">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="util:healthcheck" attributeName="doc:name" />
+				</munit-tools:with-attributes>
+			</munit-tools:verify-call>
+		</munit:validation>
+	</munit:test>
+	
+
+
+</mule>

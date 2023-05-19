@@ -1,0 +1,130 @@
+image: maven:3.6.1-jdk-8
+  
+pipelines:
+  branches:        
+    develop:
+     - step:
+        name: Build SNAPSHOT Application
+        caches:
+        - maven
+        script: 
+          - |
+            if [[ "$BITBUCKET_REPO_SLUG" == *"sapi"* ]]; then 
+                  echo "system" > ./apiLayer.txt
+            elif [[ "$BITBUCKET_REPO_SLUG" == *"eapi"* ]]; then
+                  echo "experience" > ./apiLayer.txt
+            else
+                  echo "process" > ./apiLayer.txt
+            fi
+          - bash configure-maven.sh
+          - mvn -B clean package -DmuleEnv=dev -DencryptionKey=$dev_encrpytion_key -Dversion.suffix=$dev_version_suffix
+          - ls target/*mule-application.jar > ./artifactName.txt
+        artifacts:
+          - target/*mule-application.jar
+          - pom.xml
+          - artifactName.txt
+          - apiLayer.txt
+     - step:
+        name: Deploy Application to CloudHub DEV
+        deployment: Test
+        caches:
+        - maven
+        script:
+          - ARTIFACT=$(cat ./artifactName.txt)
+          - APILAYER=$(cat ./apiLayer.txt)
+          - mvn -B -DskipTests mule:deploy 
+            -Dartifact.fileName=$ARTIFACT
+            -Dversion.suffix=$dev_version_suffix
+            -Danypoint.orgId=$exchange_groupid
+            -Dmule.version=$mule_version
+            -Ddeploy_url=$anyp_deploy_url
+            -Dcloudhub.appName=dev-$BITBUCKET_REPO_SLUG
+            -DmuleEnv=dev
+            -DcloudhubRegion=$cloudhub_region
+            -DworkerCount=1
+            -DworkerType=MICRO
+            -Denvironment=DEV
+            -DencryptionKey=$dev_encryption_key
+            -DconnectedApp.clientId=$connectedapp_client_id
+            -DconnectedApp.clientSecret=$connectedapp_client_secret
+            -Denv.anyp_client_id=$dev_anyp_client_id
+            -Denv.anyp_client_secret=$dev_anyp_client_secret
+            -Danypoint.platform.visualizer.layer=$APILAYER
+     
+    main:
+     - step:
+        name: Build RELEASE Application
+        caches:
+        - maven
+        script: 
+          - |
+            if [[ "$BITBUCKET_REPO_SLUG" == *"sapi"* ]]; then 
+                  echo "system" > ./apiLayer.txt
+            elif [[ "$BITBUCKET_REPO_SLUG" == *"eapi"* ]]; then
+                  echo "experience" > ./apiLayer.txt
+            else
+                  echo "process" > ./apiLayer.txt
+            fi
+          - bash configure-maven.sh
+          - mvn -B clean package -DmuleEnv=dev -DencryptionKey=$qa_encrpytion_key -Dversion.suffix=$qa_version_suffix
+          - ls target/*mule-application.jar > ./artifactName.txt
+        artifacts:
+          - target/*mule-application.jar
+          - pom.xml
+          - artifactName.txt
+          - apiLayer.txt
+     - step:
+        name: Deploy Application to CloudHub QA
+        deployment: Staging
+        caches:
+        - maven
+        script:
+          - ARTIFACT=$(cat ./artifactName.txt)
+          - APILAYER=$(cat ./apiLayer.txt)
+          - mvn -B -DskipTests mule:deploy 
+            -Dartifact.fileName=$ARTIFACT
+            -Dversion.suffix=
+            -Danypoint.orgId=$exchange_groupid
+            -Dmule.version=$mule_version
+            -Ddeploy_url=$anyp_deploy_url
+            -Dcloudhub.appName=qa-$BITBUCKET_REPO_SLUG
+            -DmuleEnv=qa
+            -DcloudhubRegion=$cloudhub_region
+            -DworkerCount=1
+            -DworkerType=MICRO
+            -Denvironment=QA
+            -DencryptionKey=$qa_encryption_key
+            -DconnectedApp.clientId=$connectedapp_client_id
+            -DconnectedApp.clientSecret=$connectedapp_client_secret
+            -Denv.anyp_client_id=$qa_anyp_client_id
+            -Denv.anyp_client_secret=$qa_anyp_client_secret
+            -Danypoint.platform.visualizer.layer=$APILAYER
+     - step:
+        name: Deploy Application to CloudHub PROD
+        deployment: Production
+        trigger: manual
+        caches:
+        - maven
+        script:
+          - ARTIFACT=$(cat ./artifactName.txt)
+          - APILAYER=$(cat ./apiLayer.txt)
+          - mvn -B -DskipTests mule:deploy 
+            -Dartifact.fileName=$ARTIFACT
+            -Dversion.suffix=
+            -Danypoint.orgId=$exchange_groupid
+            -Dmule.version=$mule_version
+            -Ddeploy_url=$anyp_deploy_url
+            -Dcloudhub.appName=$BITBUCKET_REPO_SLUG
+            -DmuleEnv=prod
+            -DcloudhubRegion=$cloudhub_region
+            -DworkerCount=1
+            -DworkerType=MICRO
+            -Denvironment=PROD
+            -DencryptionKey=$prod_encryption_key
+            -DconnectedApp.clientId=$connectedapp_client_id
+            -DconnectedApp.clientSecret=$connectedapp_client_secret
+            -Denv.anyp_client_id=$prod_anyp_client_id
+            -Denv.anyp_client_secret=$prod_anyp_client_secret
+            -Danypoint.platform.visualizer.layer=$APILAYER
+
+    

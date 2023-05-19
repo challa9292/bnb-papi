@@ -1,0 +1,17 @@
+%dw 2.0
+
+type auto_fdbb4d79_0dfe_4c6a_ad47_a9e701920fb4_Input_Payload = {|
+  reportType: "Experian" | "TransUnion", 
+  noOfPrincipals: Any, 
+  business: {|
+    state: Any, 
+    name: Any, 
+    taxId: Any, 
+    address: Any, 
+    zip: Any, 
+    phone: Any, 
+    city: Any, 
+    alias: Any
+  |}
+|}
+

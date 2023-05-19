@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:error-handler-plugin="http://www.mulesoft.org/schema/mule/error-handler-plugin" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:mule-aws-secrets-manager="http://www.mulesoft.org/schema/mule/mule-aws-secrets-manager" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/error-handler-plugin http://www.mulesoft.org/schema/mule/error-handler-plugin/current/mule-error-handler-plugin.xsd http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd http://www.mulesoft.org/schema/mule/mule-aws-secrets-manager http://www.mulesoft.org/schema/mule/mule-aws-secrets-manager/current/mule-mule-aws-secrets-manager.xsd http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+    <configuration-properties doc:name="Configuration properties" doc:id="40830ced-d903-4049-bcce-f6f8fee0115f" file="config/common.yaml" doc:description="Configuration for common application properties" />
+    <secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="6902722e-0a19-42ab-b5a3-9c71090d65ad" file="config/secure-${mule.env}.yaml" key="${encrypt.key}" doc:description="Configuration for Secure properties">
+        <secure-properties:encrypt algorithm="Blowfish" />
+    </secure-properties:config>
+    <configuration-properties doc:name="Configuration properties" doc:id="c63e8198-ee3b-4404-b7e0-7e97aedc7f5b" doc:description="Configuration to load environment specific properties" file="config/${mule.env}.yaml" />
+    <import doc:name="Import" doc:id="24ba074e-2510-4e93-abb6-c83375762117" file="common-util.xml" doc:description="Import the common utility flows from common modules library" />
+    <error-handler-plugin:config name="Error_Handler_Plugin_Config" doc:name="Error Handler Plugin Config" doc:id="890490e1-bd1e-4db2-a897-d9601bf55e34" doc:description="Configuration for Error Handler Plugin" />
+    <api-gateway:autodiscovery apiId="${api.id}" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="a47f55f3-6daa-486a-9735-199aba0d74d6" flowRef="bnb-it-parties-papi-main" doc:description="Api AutoDiscovery config" />
+    <tls:context name="TLS_Context" doc:name="TLS Context" doc:id="5e420b4b-e688-405d-95c9-55e0a6eb717d">
+        <tls:key-store type="jks" path="certs/${mule.env}-keystore.jks" keyPassword="${secure::keystore.keyPassword}" password="${secure::keystore.password}" alias="${secure::keystore.alias}" />
+    </tls:context>
+    <global-property doc:name="Global Property" doc:id="685f241c-ef3c-45d2-8833-a1666379eff0" name="mule.env" value="dev" />
+    <global-property doc:name="Global Property" doc:id="98f157bd-98ec-4dd7-9eaf-e7578fcf32d8" name="encrypt.key" value="SgVkYp3s" />
+    <apikit:config name="bnb-it-parties-papi-config" api="resource::3cad1818-6332-4235-94ee-84f1193e0179:bnb-it-parties-papi:1.0.1:raml:zip:bnb-it-parties-papi.raml" outboundHeadersMapName="outboundHeadersMapName" httpStatusVarName="httpStatus" />
+    <http:request-config name="HTTP_FICO_Request_configuration" doc:name="HTTP Request configuration" doc:id="e1fd91e6-a104-4dff-a79b-728ba8073f3b" sendCorrelationId="ALWAYS" basePath="${http.fico.baseUri}">
+        <http:request-connection protocol="HTTPS" host="${http.fico.host}"/>
+        <http:default-headers>
+            <http:default-header key="client_id" value="${http.fico.client_id}" />
+            <http:default-header key="client_secret" value="${http.fico.client_secret}" />
+        </http:default-headers>
+    </http:request-config>
+    <error-handler name="common-api-errorHandler" doc:id="78f66489-3a30-407c-88c6-b9d03c91f838">
+        <on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="e0e8dff3-620b-4dcb-857a-2cb84c97c7f1" type="ANY">
+            <set-variable value="#[error.errorMessage.payload.errorDetails default []]" doc:name="errorDetails" doc:id="d79b00b3-bd3b-43c7-a397-1234247d4839" variableName="errorDetails" />
+            <error-handler-plugin:on-error doc:name="Process Error" doc:id="2190c002-d6f1-4802-940d-50c4154b927a" config-ref="Error_Handler_Plugin_Config" notFoundError="The endpoint has not been implemented" previousErrors="#[vars.errorDetails default[]]">
+                <error-handler-plugin:custom-errors><![CDATA[#[${file::dwl/customErrors.dwl}]]]></error-handler-plugin:custom-errors>
+            </error-handler-plugin:on-error>
+            <set-variable value="#[attributes.httpStatus]" doc:name="Set httpStatus" doc:id="9bcfca48-3f4a-41e2-b0a6-d642d60000d2" variableName="httpStatus" />
+        </on-error-propagate>
+    </error-handler>
+    <configuration doc:name="Configuration" doc:id="4f3b2d63-7977-4feb-953c-c88d5ef5254d" defaultErrorHandler-ref="common-api-errorHandler" doc:description="Global error handler config" />
+    <http:listener-config name="bnb-it-parties-papi-httpListenerConfig">
+        <http:listener-connection host="${https.listener.host}" port="${https.port}" protocol="HTTPS" tlsContext="TLS_Context" />
+    </http:listener-config>
+    <!--  <tls:context name="API_Listener_TLS_Context" doc:name="TLS Context" doc:id="54c08a15-d217-496f-8eba-6d36bd3a4397" >
+		<tls:key-store type="pkcs12" alias="${https.listener.keystore.alias}" path="${https.listener.keystore.file}" keyPassword="${https.listener.keystore.password}" password="${https.listener.keystore.password}" />
+	</tls:context> -->
+</mule>

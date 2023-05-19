@@ -1,0 +1,14 @@
+%dw 2.0
+
+type auto_734785e5_a1cb_41a2_8863_6940dcb89418_Output_Payload = {
+  reportId?: Number, 
+  reportName?: String, 
+  reportDate?: String, 
+  duplicateReports: Array<{    searchId?: Number,     reportId?: Number,     reportName?: String,     orderedOn?: String,     companyMatch?: Boolean,     nameMatch?: Boolean,     _?: Any  }>, 
+  warnings?: Array<String>, 
+  completionCode?: Number, 
+  referenceId?: String, 
+  errors: Array<{    internalErrorDescription?: String,     publicErrorDescription?: String,     errorCode?: String,     _?: Any  }>, 
+  _?: Any
+}
+

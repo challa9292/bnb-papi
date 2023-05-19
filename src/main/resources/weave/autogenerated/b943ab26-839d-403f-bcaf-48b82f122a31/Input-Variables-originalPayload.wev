@@ -1,0 +1,14 @@
+%dw 2.0
+
+type auto_b943ab26_839d_403f_bcaf_48b82f122a31_Input_Variables_originalPayload = {
+  reportId?: Number, 
+  reportName?: String, 
+  reportDate?: String, 
+  duplicateReports: Array<{    searchId?: Number,     reportId?: Number,     reportName?: String,     orderedOn?: String,     companyMatch?: Boolean,     nameMatch?: Boolean,     _?: Any  }>, 
+  warnings?: Array<String>, 
+  completionCode?: Number, 
+  referenceId?: String, 
+  errors: Array<{    internalErrorDescription?: String,     publicErrorDescription?: String,     errorCode?: String,     _?: Any  }>, 
+  _?: Any
+}
+

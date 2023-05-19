@@ -1,0 +1,22 @@
+### Environment specific secure properties go here ###
+### Secure Properties need to be added in an encrypted fashion. 
+### The secure-properties-tool.jar can be downloaded from https://docs.mulesoft.com/downloads/mule-runtime/4.2/secure-properties-tool.jar ###
+### The values can be encrypted by running the following command in a command prompt ###
+### java -jar secure-properties-tool.jar <method> <operation> <algorithm> <mode> <key> <value> ###
+### method is hardcoded to string ###
+### operation takes the values encrypt or decrypt ###
+### algorithm is the encryption algorithm ###
+### mode is the encryption mode ###
+### key is the encryption/decryption key ###
+### value is the plain text value that needs to encrypted or the encrypted value that needs to be decrypted ###
+### Once the value is encrypted it can be added as prop.name=![encryptedValue] where prop.name is the name of your encrypted property ###
+
+#### HTTPS TLS Keystore ####
+keystore:
+  keyPassword: "![0y44Lt9ASCCNQWeFm0wuKg==]"
+  password: "![0y44Lt9ASCCNQWeFm0wuKg==]"
+  alias: "![jvj5noTl+b8=]"
+
+mulesoft:
+  client_id: "![aoOodGDS20XObRK4ESzqk12gsh7YBZ8xE1IJrXupq0bPx/fcwoDllg==]"
+  client_secret: "![QSkm9bzLhnK19HeaX9KspZSg/YPVOD2MDO28wyuS1Wq0OaiWao+0Ng==]"

@@ -1,0 +1,48 @@
+encrypt:
+  key: "to-be-given-at-runtime"
+
+### API Details ###### This is overridden on deployment
+api:
+  name: "${project.artifactId}"
+  version: "${project.version}"
+  urlversion: "v1"
+
+
+# Http listener details
+https:
+  port: "443"
+  listener:
+    timeout: "40000"
+    path: "/api"
+    
+# target-api configruation
+  requestor:
+    path: "/api/ping"
+    timeout:
+      connection: "20000"
+      response: "20000"
+    reconnection:
+      frequency: "3000"
+      attempts: "3"
+    
+     
+      
+# SMTP Details
+smtp:
+  host: ""
+  port: ""
+  user: ""
+  password: ""
+  retryCount: ""
+  retryInterval: ""
+
+### JSON Logger configuration ###
+ # [DO NOT EDIT] To be replaced by Maven build
+# Indicate which fields should not be logged (it can take values content and message and needs to be comma separated)
+json:
+  logger: 
+    disabled:
+      fields: ""
+    application:
+      name: ${project.artifactId}
+      version: ${project.version}
